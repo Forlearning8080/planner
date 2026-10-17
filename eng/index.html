@@ -438,7 +438,7 @@ document.getElementById('sy').onclick=()=>Sync.go();
 document.addEventListener('keydown',e=>{const t=document.activeElement&&document.activeElement.tagName;if((e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(t))||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k')){e.preventDefault();Search.focus()}else if(e.key==='Escape')document.body.classList.remove('open')});
 Search.init();window.addEventListener('pagehide',()=>{if(storeOK)save(null,1);Sync.exit()});window.addEventListener('load',()=>{if(cur==='analytics')route()});
 route();Sync.init();if(S.savedAt&&Date.now()-Date.parse(S.savedAt)>30*864e5)toast('Your last save was over 30 days ago. Consider downloading a backup.')}
-
+// d
 return{init,_t:{curriculumJSON,TOP,MODS,validate,plan,envelope}}
 })();
 ERD.init();
