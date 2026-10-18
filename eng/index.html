@@ -46,14 +46,13 @@ label{display:block;margin:8px 0;font-size:13px;color:var(--mu)}label>*{display:
 @media(max-width:900px){#app{grid-template-columns:minmax(0,1fr)}aside{position:fixed;z-index:30;left:0;top:0;width:260px;transform:translateX(-100%);transition:transform .2s}body.open aside{transform:none}#scrim{position:fixed;inset:0;background:#0009;z-index:25}body.open #scrim{display:block}body.rail .lb,body.rail .pc{display:inline}body.rail .gt{display:block}body.rail aside details{display:block}body.rail aside a{justify-content:flex-start}.t{grid-template-columns:24px 1fr}}
 @media(max-width:640px){header{padding:10px 12px}header h1,.search kbd,.chip-b .lb2{display:none}#sr{position:fixed;left:8px;right:8px;top:60px}main{padding:16px 12px 60px}.search{max-width:none}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-</style></head></head></head></head><body>
+</style></head><body>
 <div id="app"><aside id="nav" aria-label="Primary"></aside><div id="scrim"></div>
 <div class="shell"><header><button id="mb" class="ib" type="button" aria-label="Toggle sidebar"><i class="hgi-stroke hgi-menu-01" aria-hidden="true"></i></button><h1 id="ttl"></h1>
 <div class="search"><i class="hgi-stroke hgi-search-01 si" aria-hidden="true"></i><input id="gs" type="text" placeholder="Search topics, projects, resources" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sr" aria-autocomplete="list" aria-label="Global search"><kbd>/</kbd><div id="sr" role="listbox" hidden></div></div>
 <button id="sy" class="chip-b off" type="button"></button><button id="th" class="ib" type="button" aria-label="Toggle theme"></button></header>
 <main id="main" tabindex="-1"></main></div></div>
 <div id="toasts" role="status" aria-live="polite"></div>
-<script src="../config.js"></script>
 <script>
 'use strict';
 /* ===== Engineering Roadmap Dashboard. Schema v1 backup envelope:
@@ -373,8 +372,10 @@ function init(){let tm;const i=inp();i.addEventListener('input',()=>{clearTimeou
 i.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();if(items.length){idx=(idx+1)%items.length;mark()}}else if(e.key==='ArrowUp'){e.preventDefault();if(items.length){idx=(idx-1+items.length)%items.length;mark()}}else if(e.key==='Enter'){e.preventDefault();if(items.length)pick(idx<0?0:idx)}else if(e.key==='Escape'){if(!box().hidden)close();else{i.value='';i.blur()}}});
 document.addEventListener('click',e=>{if(!e.target.closest('.search'))close()})}
 return{init,focus:()=>{inp().focus();inp().select()}}})();
-/* Supabase Storage sync: read the JSON object once at load; write batched changes at most every 5 minutes (plus one attempt when the tab closes). Reads use the public URL; writes need a signed-in user and storage policies. */
-const Sync=(()=>{const AC=window.APP_CONFIG||{},K='erd.sb',DELAY=AC.AUTO_SYNC_DELAY||300000,RESERVED=[];let cfg=rd(),timer=null,due=0,busy=false,mute=false,seq=0,base={},err='',sig='';
+/* Supabase Storage sync. Config is pasted as JSON in a dialog (no build step, no config.js).
+   PASSWORD in that JSON is used once to sign in and is never stored; only session tokens are kept.
+   Reads once at load; writes are batched at most every AUTO_SYNC_DELAY ms (plus one attempt when the tab closes). */
+const Sync=(()=>{const K='erd.sb',CK='erd.cfgjson',RESERVED=[];let AC=loadAC(),cfg=rd(),timer=null,due=0,busy=false,mute=false,seq=0,base={},err='',sig='';
 function rd(){const d={enabled:false,url:'',bucket:'',file:'data.json',anon:'',email:'',access:'',refresh:'',exp:0,dirty:false,last:null};let s={};try{localStorage.removeItem('erd.sync');s=JSON.parse(localStorage.getItem(K)||'{}')}catch(e){}
 return Object.assign(d,s,{enabled:!!AC.SUPABASE_URL,url:AC.SUPABASE_URL||'',bucket:AC.SUPABASE_BUCKET||'',file:(AC.FILES||{}).ENGLISH||'data.json',anon:AC.SUPABASE_ANON_KEY||s.anon||''})}const wr=()=>{try{localStorage.setItem(K,JSON.stringify(cfg))}catch(e){}};
 const on=()=>cfg.enabled&&!!cfg.url&&!!cfg.bucket&&!!cfg.file,signed=()=>!!(cfg.refresh||cfg.access);
@@ -384,10 +385,41 @@ const hasData=()=>!!(Object.keys(S.progress).length||S.tasks.length||S.assess.le
 function badKey(k){if(/^sb_secret_/.test(k))return'That is a secret key. Use the publishable (anon) key.';try{const p=JSON.parse(atob(k.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(p.role==='service_role')return'That is the service_role key. Never put it in a web page. Use the anon (publishable) key.'}catch(e){}return''}
 async function call(url,opt){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),20000);try{return await fetch(url,Object.assign({signal:ac.signal},opt))}catch(e){throw new Error(e.name==='AbortError'?'Request timed out':'Network or CORS error')}finally{clearTimeout(t)}}
 const setSess=j=>{cfg.access=j.access_token;cfg.refresh=j.refresh_token||cfg.refresh;cfg.exp=Date.now()+(j.expires_in||3600)*1000;wr()};
-async function token(force){if(!signed())throw new Error('Sign in required');if(!force&&cfg.access&&cfg.exp-Date.now()>60000)return cfg.access;if(!cfg.refresh){if(cfg.access&&!force)return cfg.access;throw new Error('Session expired. Sign in again')}
-const r=await call(cfg.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:cfg.anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:cfg.refresh})});if(!r.ok){cfg.access=cfg.refresh='';cfg.exp=0;wr();throw new Error('Session expired. Sign in again')}setSess(await r.json());return cfg.access}
+async function token(force){if(!signed())throw new Error('Sign in required');if(!force&&cfg.access&&cfg.exp-Date.now()>60000)return cfg.access;if(!cfg.refresh){if(cfg.access&&!force)return cfg.access;throw new Error('Session expired. Paste the cloud JSON again')}
+const r=await call(cfg.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:cfg.anon,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:cfg.refresh})});if(!r.ok){cfg.access=cfg.refresh='';cfg.exp=0;wr();throw new Error('Session expired. Paste the cloud JSON again')}setSess(await r.json());return cfg.access}
 async function signIn(email,pw){const r=await call(cfg.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:cfg.anon,'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});if(!r.ok){let m='Sign-in failed (HTTP '+r.status+')';try{const j=await r.json();m=j.msg||j.error_description||j.message||m}catch(e){}throw new Error(m)}setSess(await r.json());cfg.email=email;wr()}
-function arm(){if(!on()||timer)return;due=Date.now()+DELAY;timer=setTimeout(()=>{timer=null;due=0;push('timer')},DELAY)}
+function loadAC(){try{return JSON.parse(localStorage.getItem(CK)||'{}')}catch(e){return{}}}
+function checkCfg(j){
+  if(!j||typeof j!=='object'||Array.isArray(j))return'JSON must be an object';
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(String(j.SUPABASE_URL||'').replace(/\/+$/,'')))return'SUPABASE_URL must look like https://xxxx.supabase.co';
+  if(!/^[A-Za-z0-9_-]+$/.test(j.SUPABASE_BUCKET||''))return'SUPABASE_BUCKET is missing or invalid';
+  if(!j.SUPABASE_ANON_KEY)return'SUPABASE_ANON_KEY is missing';
+  const e=badKey(j.SUPABASE_ANON_KEY);if(e)return e;
+  if(!/^[A-Za-z0-9._-]+\.json$/.test((j.FILES||{}).ENGLISH||''))return'FILES.ENGLISH must be a .json file name';
+  return''}
+async function applyCfg(j){
+  const pw=j.PASSWORD,c=Object.assign({},j);delete c.PASSWORD;c.SUPABASE_URL=c.SUPABASE_URL.replace(/\/+$/,'');
+  try{localStorage.setItem(CK,JSON.stringify(c))}catch(e){}
+  AC=c;
+  Object.assign(cfg,{enabled:true,url:c.SUPABASE_URL,bucket:c.SUPABASE_BUCKET,file:c.FILES.ENGLISH,anon:c.SUPABASE_ANON_KEY,email:c.USER_MAIL||cfg.email,last:null});wr();
+  if(pw){if(!c.USER_MAIL)throw new Error('USER_MAIL is required together with PASSWORD');await signIn(c.USER_MAIL,pw)}
+  else if(!signed())throw new Error('PASSWORD is required to sign in')}
+function disconnect(){if(timer){clearTimeout(timer);timer=null}cfg.enabled=false;cfg.access=cfg.refresh='';cfg.exp=0;cfg.dirty=false;wr();try{localStorage.removeItem(CK)}catch(e){}AC={};err='';sig='';render();route()}
+function openCfg(){
+  const ta=h('textarea',{rows:12,spellcheck:'false',style:'font-family:monospace;font-size:12px',value:Object.keys(AC).length?JSON.stringify(AC,null,2):''});
+  const msg=h('p',{class:'mu',role:'status'},stat());
+  const d=modal('Cloud sync',h('div',{},h('p',{class:'mu'},'Paste your config JSON (SUPABASE_URL, SUPABASE_BUCKET, SUPABASE_ANON_KEY, FILES, AUTO_SYNC, AUTO_SYNC_DELAY, USER_MAIL, PASSWORD). PASSWORD is used once to sign in and is never stored.'),ta,msg),
+    [['Cancel'],['Disconnect',()=>{disconnect()},'dng'],['Sync now',()=>{if(!on()||!cfg.dirty){toast('Nothing to sync','ok');return}push('manual').then(ok=>toast(ok?'Saved to Supabase':'Sync failed: '+err,ok?'ok':'err'))}],['Connect and sync',()=>{go();return false},'pri']]);
+  async function go(){
+    let j;try{j=JSON.parse(ta.value)}catch(e){msg.textContent='Invalid JSON: '+e.message;return}
+    const e=checkCfg(j);if(e){msg.textContent=e;return}
+    msg.textContent='Connecting…';
+    try{await applyCfg(j)}catch(x){msg.textContent=x.message;return}
+    d.close();toast('Connected','ok');sig='';render();
+    await new Promise(r=>setTimeout(r,200));
+    await pull(true);
+    if(cfg.dirty&&signed()&&!document.querySelector('.ov'))await push('manual')}}
+function arm(){if(!on()||timer||AC.AUTO_SYNC===false)return;const D=AC.AUTO_SYNC_DELAY||300000;due=Date.now()+D;timer=setTimeout(()=>{timer=null;due=0;push('timer')},D)}
 function touch(){if(mute||!on())return;cfg.dirty=true;seq++;wr();arm();render()}
 async function push(why){if(!on()||busy||!cfg.dirty)return false;if(!signed()){render();return false}busy=true;const my=seq;render();
 try{const body=JSON.stringify(Object.assign({},base,{userState:strip(),syncMeta:{app:APP,schema:1,updatedAt:now()}}));
@@ -396,7 +428,7 @@ let r=await up(await token(false));if(r.status===401)r=await up(await token(true
 if(!r.ok)throw new Error(r.status===400||r.status===403?'Permission denied ('+r.status+'). Check the storage policies and that you signed in with the allowed account':'Upload failed (HTTP '+r.status+')');
 if(seq===my)cfg.dirty=false;cfg.last=now();wr();err='';if(timer){clearTimeout(timer);timer=null;due=0}if(cfg.dirty)arm();busy=false;render();return true}catch(e){err=e.message;busy=false;arm();render();return false}}
 function adopt(us){mute=true;const r=commit(Object.assign(blank(),clone(us)));mute=false;if(r.ok){cfg.dirty=false;cfg.last=now();wr();toast('Loaded your data from Supabase','ok')}else toast('Could not apply cloud data: '+r.err,'err')}
-function conflict(us,meta){modal('Cloud and browser data differ',h('div',{},h('p',{},'Supabase: '+Object.keys(us.progress||{}).length+' progress records'+(meta&&meta.updatedAt?', saved '+meta.updatedAt.slice(0,16).replace('T',' '):'')+'. This browser: '+Object.keys(S.progress).length+' records.'),h('p',{class:'mu'},'Merge keeps both and prefers this browser on conflicts. Use cloud replaces this browser. Keep this browser overwrites the cloud at the next sync.')),[['Use cloud',()=>{adopt(us);route()}],['Keep this browser',()=>{cfg.dirty=true;wr();arm();render()}],['Merge',()=>{const p=plan('merge',{state:us},'local');mute=true;const r=commit(p.next);mute=false;if(r.ok){cfg.dirty=true;wr();arm();toast('Merged. Saves to Supabase within 5 minutes.','ok');route()}else toast(r.err,'err');render()},'pri']])}
+function conflict(us,meta){modal('Cloud and browser data differ',h('div',{},h('p',{},'Supabase: '+Object.keys(us.progress||{}).length+' progress records'+(meta&&meta.updatedAt?', saved '+meta.updatedAt.slice(0,16).replace('T',' '):'')+'. This browser: '+Object.keys(S.progress).length+' records.'),h('p',{class:'mu'},'Merge keeps both and prefers this browser on conflicts. Use cloud replaces this browser. Keep this browser overwrites the cloud at the next sync.')),[['Use cloud',()=>{adopt(us);route()}],['Keep this browser',()=>{cfg.dirty=true;wr();arm();render()}],['Merge',()=>{const p=plan('merge',{state:us},'local');mute=true;const r=commit(p.next);mute=false;if(r.ok){cfg.dirty=true;wr();arm();toast('Merged. Saves to Supabase soon.','ok');route()}else toast(r.err,'err');render()},'pri']])}
 async function pull(manual){if(!on())return;busy=true;render();try{let r=null;if(signed()){try{r=await call(OBJ()+'authenticated/'+PATH(),{headers:{apikey:cfg.anon,Authorization:'Bearer '+await token(false)},cache:'no-store'})}catch(e){r=null}}
 if(!r||(!r.ok&&r.status!==400&&r.status!==404))r=await call(OBJ()+'public/'+PATH()+'?t='+Date.now(),{cache:'no-store'});
 let d={};if(r.status===404||r.status===400)d={};else if(!r.ok)throw new Error('Read failed (HTTP '+r.status+')');else{d=await r.json();if(!d||typeof d!=='object'||Array.isArray(d))throw new Error('File must hold a JSON object')}
@@ -409,23 +441,15 @@ if(JSON.stringify(a)===JSON.stringify(b)){cfg.dirty=false;cfg.last=now();wr()}el
 err='';busy=false;render();if(cur!=='data')route()}catch(e){err=e.message;busy=false;render();if(manual)toast('Load failed: '+err,'err')}}
 const stat=()=>'Status: '+(on()?(err?'error: '+err:cfg.dirty?'unsynced changes':'in sync'):'not connected')+' · Signed in: '+(signed()?(cfg.email||'yes'):'no')+' · Last sync: '+(cfg.last||'never');
 function render(){const b=document.getElementById('sy');if(!b)return;const se=document.getElementById('sbstat');if(se)se.textContent=stat();let i='cloud',t='Local only',c='off',tip='Cloud sync is not set up. Click to set it up.';
-if(on()){if(busy){t='Syncing…';c='busy';i='refresh';tip='Talking to Supabase'}else if(err){t='Sync failed';c='err';i='alert-02';tip=err+'. Click to retry.'}else if(cfg.dirty&&!signed()){t='Sign in to sync';c='dirty';i='user';tip='You have unsynced changes. Sign in on the Data page.'}else if(cfg.dirty){const s=due?Math.max(0,Math.round((due-Date.now())/1000)):0;t='Unsynced'+(due?' · '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0'):'');c='dirty';i='cloud-upload';tip='Changes are batched. Click to sync now.'}else{t='Synced';c='ok';i='checkmark-circle-02';tip='Last synced '+(cfg.last?new Date(cfg.last).toLocaleTimeString():'never')}}
+if(on()){if(busy){t='Syncing…';c='busy';i='refresh';tip='Talking to Supabase'}else if(err){t='Sync failed';c='err';i='alert-02';tip=err+'. Click to open the cloud JSON.'}else if(cfg.dirty&&!signed()){t='Sign in to sync';c='dirty';i='user';tip='You have unsynced changes. Click and paste the cloud JSON.'}else if(cfg.dirty){const s=due?Math.max(0,Math.round((due-Date.now())/1000)):0;t='Unsynced'+(due?' · '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0'):'');c='dirty';i='cloud-upload';tip='Changes are batched. Click to open the cloud dialog.'}else{t='Synced';c='ok';i='checkmark-circle-02';tip='Last synced '+(cfg.last?new Date(cfg.last).toLocaleTimeString():'never')}}
 const sg=c+t;if(sg===sig)return;sig=sg;b.className='chip-b '+c;b.title=tip;b.setAttribute('aria-label','Sync status: '+t);b.replaceChildren(ic(i),h('span',{class:'lb2'},t))}
-function sql(){const f=cfg.file||'dashboard-state.json',b=cfg.bucket||'json',w="bucket_id = '"+b+"' and name = '"+f+"'",u="(auth.jwt() ->> 'email') = 'YOUR_EMAIL'";return "-- Run once in the Supabase SQL editor. Replace YOUR_EMAIL.\ncreate policy \"dash read\" on storage.objects for select to authenticated using ("+w+");\ncreate policy \"dash insert\" on storage.objects for insert to authenticated with check ("+w+" and "+u+");\ncreate policy \"dash update\" on storage.objects for update to authenticated using ("+w+" and "+u+") with check ("+w+" and "+u+");"}
-function card(){const f=(v,p,l,t)=>h('input',{value:v,placeholder:p,'aria-label':l,autocomplete:'off',type:t||'text'});const url=f(cfg.url,'https://xxxx.supabase.co','Project URL'),bk=f(cfg.bucket,'bucket','Bucket'),fl=f(cfg.file,'dashboard-state.json','File name'),an=f(cfg.anon,'anon or publishable key','Anon key','password'),em=f(cfg.email,'you@example.com','Email','email'),pw=f('','password','Password','password');
-const apply=()=>{const u=url.value.trim().replace(/\/+$/,''),b=bk.value.trim(),n=fl.value.trim(),k=an.value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(u)){toast('Project URL must look like https://xxxx.supabase.co','err');return false}if(!/^[A-Za-z0-9_-]+$/.test(b)){toast('Bucket name has invalid characters','err');return false}if(!/^[A-Za-z0-9._-]+\.json$/.test(n)){toast('File name must end in .json','err');return false}if(RESERVED.includes(n)){toast(n+' belongs to your English/Practice pages. Use a different file name.','err');return false}if(k){const e=badKey(k);if(e){toast(e,'err');return false}}Object.assign(cfg,{url:u,bucket:b,file:n,anon:k});wr();return true};
-const pre=h('pre',{style:'white-space:pre-wrap;font-size:12px;background:var(--p2);padding:10px;border-radius:8px;overflow:auto'});pre.textContent=sql();
-return h('div',{class:'card'},h('div',{class:'row',style:'margin:0 0 6px'},ic('cloud'),h('strong',{},'Cloud sync (Supabase Storage)')),
-h('p',{class:'mu'},'Loads your data once when the app opens. Every change saves locally at once, and all changes go to Supabase together, at most once every 5 minutes, plus one last attempt when you close the tab. Reading uses the public file URL. Saving needs you to sign in.'),
-h('p',{class:'mu wn'},'Only paste the anon (publishable) key. Never the service_role or secret key. The sign-in password is not stored; only the session tokens are, in this browser, and never in backups.'),
-field('Project URL',url),field('Bucket',bk),field('File name (not data.json or study.json)',fl),field('Anon / publishable key',an),
-h('p',{class:'mu',id:'sbstat'},stat()),
-h('div',{class:'row'},h('button',{class:'pri',onclick:()=>{if(!apply())return;cfg.enabled=true;cfg.last=null;wr();err='';pull(true)}},'Connect and load'),h('button',{onclick:()=>{if(!on()){toast('Connect first','err');return}if(!cfg.dirty){toast('Nothing to sync. Everything is already saved.','ok');return}push('manual').then(ok=>toast(ok?'Saved to Supabase':'Sync failed: '+err,ok?'ok':'err'))}},'Sync now'),h('button',{onclick:()=>{if(timer){clearTimeout(timer);timer=null}cfg.enabled=false;cfg.access=cfg.refresh='';cfg.exp=0;cfg.dirty=false;wr();err='';sig='';render();route()}},'Disconnect')),
-h('h2',{},'Sign in to save'),field('Email',em),field('Password',pw),
-h('div',{class:'row'},h('button',{onclick:async()=>{if(!apply())return;if(!cfg.anon){toast('Enter the anon key first','err');return}const e=em.value.trim();if(!e||!pw.value){toast('Enter email and password','err');return}try{await signIn(e,pw.value);pw.value='';err='';toast('Signed in','ok');if(cfg.dirty)arm();sig='';render();route()}catch(x){toast(x.message,'err')}}},'Sign in'),h('button',{onclick:()=>{cfg.access=cfg.refresh='';cfg.exp=0;wr();sig='';render();route()}},'Sign out')),
-h('details',{},h('summary',{},'One-time Supabase setup (policies)'),h('div',{style:'padding:12px 14px'},h('ol',{class:'mu'},h('li',{},'Authentication → Users → Add user (your email and a strong password). Turn off public sign-ups.'),h('li',{},'Keep the bucket public so reading works without login.'),h('li',{},'Run this SQL once so only your account can write this one file:')),pre,h('button',{onclick:()=>{try{navigator.clipboard.writeText(pre.textContent).then(()=>toast('SQL copied','ok'),()=>toast('Copy failed','err'))}catch(e){toast('Copy failed','err')}}},'Copy SQL'))))}
+function card(){
+  return h('div',{class:'card'},h('div',{class:'row',style:'margin:0 0 6px'},ic('cloud'),h('strong',{},'Cloud sync (Supabase Storage)')),
+    h('p',{class:'mu'},'Click the button, paste your config JSON and submit. The page signs in, loads the cloud file and syncs.'),
+    h('p',{class:'mu',id:'sbstat'},stat()),
+    h('div',{class:'row'},h('button',{class:'pri',onclick:openCfg},'Open cloud JSON'),h('button',{class:'dng',onclick:disconnect},'Disconnect')))}
 function init(){render();if(on()){if(cfg.dirty)arm();pull(false)}setInterval(render,1000)}
-return{init,touch,card,render,push:()=>push('manual'),exit:()=>{if(on()&&cfg.dirty&&!busy&&signed())push('unload')},setMute:v=>{mute=v},on:()=>on(),isDirty:()=>cfg.dirty,go:()=>{if(on()&&cfg.dirty&&signed())push('manual');else nav('data')}}})();
+return{init,touch,card,render,push:()=>push('manual'),exit:()=>{if(on()&&cfg.dirty&&!busy&&signed())push('unload')},setMute:v=>{mute=v},on:()=>on(),isDirty:()=>cfg.dirty,go:openCfg}})();
 function thIcon(){const b=document.getElementById('th');b.replaceChildren(ic(S.settings.theme==='light'?'moon-02':'sun-03'))}
 function applyTheme(){const l=S.settings.theme==='light';const r=document.documentElement.style;const v={'--bg':'#fafafa','--p1':'#fff','--p2':'#f0f0f0','--bd':'#dcdcdc','--tx':'#161616','--mu':'#666','--ac':'#e04a10','--ok':'#161616','--wn':'#8a5a00','--er':'#b3261e'};for(const k in v){if(l)r.setProperty(k,v[k]);else r.removeProperty(k)}}
 function init(){S=load();applyTheme();thIcon();document.body.classList.toggle('rail',!!S.settings.rail&&innerWidth>900);const err=findCycle(MOD);if(err)toast('Curriculum cycle: '+err.join('>'),'err');if(loadNote)toast(loadNote,'err');
@@ -438,7 +462,6 @@ document.getElementById('sy').onclick=()=>Sync.go();
 document.addEventListener('keydown',e=>{const t=document.activeElement&&document.activeElement.tagName;if((e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(t))||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k')){e.preventDefault();Search.focus()}else if(e.key==='Escape')document.body.classList.remove('open')});
 Search.init();window.addEventListener('pagehide',()=>{if(storeOK)save(null,1);Sync.exit()});window.addEventListener('load',()=>{if(cur==='analytics')route()});
 route();Sync.init();if(S.savedAt&&Date.now()-Date.parse(S.savedAt)>30*864e5)toast('Your last save was over 30 days ago. Consider downloading a backup.')}
-// d
 return{init,_t:{curriculumJSON,TOP,MODS,validate,plan,envelope}}
 })();
 ERD.init();
