@@ -1,0 +1,314 @@
+{
+    "schemaVersion": 1,
+    "app": {
+        "name": "Fit Planner",
+        "revision": 0,
+        "lastModifiedAt": "2026-10-31T11:55:49.265Z"
+    },
+    "settings": {
+        "restSet": 45,
+        "restEx": 60,
+        "warm": 60,
+        "cool": 60,
+        "days": [1, 3, 5, 6],
+        "sound": true,
+        "auto": true
+    },
+    "library": [
+        {
+            "id": "squat",
+            "name": "Squats",
+            "type": "reps",
+            "min": 10,
+            "max": 20,
+            "step": 2,
+            "next": "split",
+            "media": ""
+        },
+        {
+            "id": "split",
+            "name": "Split squats (each leg)",
+            "type": "reps",
+            "min": 6,
+            "max": 12,
+            "step": 2,
+            "next": "jsq",
+            "media": ""
+        },
+        {
+            "id": "jsq",
+            "name": "Jump squats",
+            "type": "reps",
+            "min": 8,
+            "max": 15,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "incl",
+            "name": "Incline push-ups",
+            "type": "reps",
+            "min": 8,
+            "max": 15,
+            "step": 2,
+            "next": "push",
+            "media": ""
+        },
+        {
+            "id": "push",
+            "name": "Push-ups",
+            "type": "reps",
+            "min": 6,
+            "max": 15,
+            "step": 2,
+            "next": "decl",
+            "media": ""
+        },
+        {
+            "id": "decl",
+            "name": "Decline push-ups",
+            "type": "reps",
+            "min": 6,
+            "max": 12,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "glute",
+            "name": "Glute bridges",
+            "type": "reps",
+            "min": 12,
+            "max": 20,
+            "step": 2,
+            "next": "slb",
+            "media": ""
+        },
+        {
+            "id": "slb",
+            "name": "Single-leg glute bridges (each leg)",
+            "type": "reps",
+            "min": 8,
+            "max": 14,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "bird",
+            "name": "Bird dogs (each side)",
+            "type": "reps",
+            "min": 10,
+            "max": 16,
+            "step": 2,
+            "next": "dead",
+            "media": ""
+        },
+        {
+            "id": "dead",
+            "name": "Dead bugs (each side)",
+            "type": "reps",
+            "min": 10,
+            "max": 16,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "calf",
+            "name": "Calf raises",
+            "type": "reps",
+            "min": 15,
+            "max": 25,
+            "step": 2,
+            "next": "slc",
+            "media": ""
+        },
+        {
+            "id": "slc",
+            "name": "Single-leg calf raises (each leg)",
+            "type": "reps",
+            "min": 10,
+            "max": 18,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "plank",
+            "name": "Forearm plank",
+            "type": "time",
+            "min": 20,
+            "max": 60,
+            "step": 5,
+            "next": "side",
+            "media": ""
+        },
+        {
+            "id": "side",
+            "name": "Side plank (each side)",
+            "type": "time",
+            "min": 15,
+            "max": 40,
+            "step": 5,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "lunge",
+            "name": "Reverse lunges (each leg)",
+            "type": "reps",
+            "min": 8,
+            "max": 14,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "super",
+            "name": "Supermans",
+            "type": "reps",
+            "min": 10,
+            "max": 16,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "mtn",
+            "name": "Mountain climbers",
+            "type": "time",
+            "min": 20,
+            "max": 40,
+            "step": 5,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "wall",
+            "name": "Wall sit",
+            "type": "time",
+            "min": 20,
+            "max": 60,
+            "step": 5,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "dip",
+            "name": "Chair dips",
+            "type": "reps",
+            "min": 6,
+            "max": 14,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "hinge",
+            "name": "Hip hinges (bodyweight)",
+            "type": "reps",
+            "min": 12,
+            "max": 20,
+            "step": 2,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "holl",
+            "name": "Hollow hold",
+            "type": "time",
+            "min": 15,
+            "max": 40,
+            "step": 5,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "pike",
+            "name": "Pike push-ups",
+            "type": "reps",
+            "min": 5,
+            "max": 12,
+            "step": 1,
+            "next": "",
+            "media": ""
+        },
+        {
+            "id": "jj",
+            "name": "Jumping jacks",
+            "type": "time",
+            "min": 20,
+            "max": 40,
+            "step": 5,
+            "next": "",
+            "media": ""
+        }
+    ],
+    "plan": [
+        {
+            "id": "squat",
+            "sets": 2,
+            "reps": 10,
+            "easy": 0,
+            "hard": 0,
+            "addedAt": null
+        },
+        {
+            "id": "incl",
+            "sets": 2,
+            "reps": 8,
+            "easy": 0,
+            "hard": 0,
+            "addedAt": null
+        },
+        {
+            "id": "glute",
+            "sets": 2,
+            "reps": 12,
+            "easy": 0,
+            "hard": 0,
+            "addedAt": null
+        },
+        {
+            "id": "bird",
+            "sets": 2,
+            "reps": 10,
+            "easy": 0,
+            "hard": 0,
+            "addedAt": null
+        },
+        {
+            "id": "calf",
+            "sets": 2,
+            "reps": 15,
+            "easy": 0,
+            "hard": 0,
+            "addedAt": null
+        },
+        {
+            "id": "plank",
+            "sets": 2,
+            "reps": 20,
+            "easy": 0,
+            "hard": 0,
+            "addedAt": null
+        }
+    ],
+    "queue": [
+        "lunge",
+        "super",
+        "mtn",
+        "wall",
+        "dip",
+        "hinge",
+        "holl",
+        "pike",
+        "jj"
+    ],
+    "lastAdd": "2026-10-31",
+    "overrides": {},
+    "log": [],
+    "changes": []
+}
