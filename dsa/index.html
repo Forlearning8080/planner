@@ -129,9 +129,14 @@ function ring(v,t){const C=2*Math.PI*46,p=Math.min(1,v/t);return `<svg width="11
 function heat(m){const e=addD(wk0(today()),6);let h="";for(let d=addD(wk0(today()),-112);d<=e;d=addD(d,1)){const v=m[d]||0;h+=d>today()?'<i style="background:none"></i>':`<i data-l="${v?v>=6?4:v>=4?3:v>=2?2:1:0}" title="${d}: ${v}"></i>`}return `<div class="heat">${h}</div>`}
 function recap(m){const s=wk0(today()),days=[...Array(7)].map((_,i)=>addD(s,i)),sol=P().filter(p=>p.firstAt>=s&&p.firstAt<=days[6]).length,rev=days.reduce((a,d)=>a+(m[d]||0),0)-sol,b=days.map(d=>[d,m[d]||0]).sort((a,b)=>b[1]-a[1])[0],w=strength().filter(x=>x.sc!=null).sort((a,b)=>a.sc-b.sc)[0];
 return `<div class="card"><b>Weekly recap</b> <span class="sm mu">${s} to ${days[6]}</span><div class="grid" style="margin:10px 0"><div><div class="mu sm">Solved</div><b class="big">${sol}</b></div><div><div class="mu sm">Reviewed</div><b class="big">${rev}</b></div><div><div class="mu sm">Best day</div><b class="big" style="font-size:22px">${b[1]?dname(b[0])+" · "+b[1]:"—"}</b></div><div><div class="mu sm">Weakest pattern</div><b class="big" style="font-size:22px">${w?esc(w.c.name)+" · "+w.sc+"%":"—"}</b></div></div><b>Next week, focus on ${esc(focus())}.</b></div>`}
+/* Today's new problems: one problem from each of N different random topics (next unsolved in that topic), kept for the whole day */
+function pickNew(){const t=today(),n=S.settings.newPerDay;let ch=false;if(!S.daily||S.daily.date!==t){S.daily={date:t,ids:[]};ch=true}const d=S.daily,len=d.ids.length;
+d.ids=d.ids.filter(id=>{const p=pr(id);return p&&(p.status==="New"||p.firstAt===t)});const used=new Set(d.ids.map(id=>pr(id).categoryId)),avail=c=>P().find(p=>p.categoryId===c.id&&p.status==="New"&&!d.ids.includes(p.id));
+while(d.ids.length<n){let pool=S.categories.filter(c=>!used.has(c.id)&&avail(c));if(!pool.length)pool=S.categories.filter(avail);if(!pool.length)break;const c=pool[Math.floor(Math.random()*pool.length)];d.ids.push(avail(c).id);used.add(c.id)}
+if(ch||d.ids.length!==len)try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}return d.ids.map(pr)}
 /* ===== Views ===== */
 const V={
-today(){const t=today(),m=activity(),n=S.settings.newPerDay,dm=S.settings.dailyMin,dn=P().filter(p=>p.firstAt===t),rem=Math.max(0,n-dn.length),q=P().filter(p=>p.status==="New").slice(0,rem),dv=due(),od=dv.filter(p=>p.nextReview<t).length,sk=streakInfo(m),sv=P().filter(p=>p.status!=="New").length,wkS=P().filter(p=>p.firstAt>=wk0(t)).length,left=7-dow(t),got=m[t]||0,met=got>=dm,fin=!dv.length&&!rem;
+today(){const t=today(),m=activity(),n=S.settings.newPerDay,dm=S.settings.dailyMin,dn=P().filter(p=>p.firstAt===t),rem=Math.max(0,n-dn.length),q=pickNew().filter(p=>p.status==="New").slice(0,rem),dv=due(),od=dv.filter(p=>p.nextReview<t).length,sk=streakInfo(m),sv=P().filter(p=>p.status!=="New").length,wkS=P().filter(p=>p.firstAt>=wk0(t)).length,left=7-dow(t),got=m[t]||0,met=got>=dm,fin=!dv.length&&!rem;
 const fc=[...Array(14)].map((_,i)=>{const d=addD(t,i);return[d,P().filter(p=>p.status!=="New"&&(i?p.nextReview===d:p.nextReview<=d)).length]}),mx=Math.max(1,...fc.map(x=>x[1])),sg=["New","Learning","Reviewing","Mastered"].map(s=>[s,P().filter(p=>stage(p)===s).length]);
 return `<h2>Today</h2><div class="card mis"><div class="sm mu">Today's mission</div><div class="mt">${fin?"Mission complete":pl(dv.length,"review")+" due + "+pl(rem,"new problem")}</div><div class="sm mu">${fin?"Anything extra is a bonus, not a duty.":"Do the reviews first, then the new one. No decisions needed."}</div>${bar((()=>{const d=dn.length+P().reduce((a,p)=>a+p.reviews.filter(r=>r.date===t).length,0),T=d+dv.length+rem;return T?d/T*100:100})())}<div class="r" style="border:0;padding-left:0">${fin?"":`<button class="pri" data-a="go">${ic("play")} ${dv.length?"Start reviews":"Solve next problem"}</button>`}<span class="tag ${met?"nw":""}">Daily minimum ${Math.min(got,dm)}/${dm}${met?" · day counted":""}</span></div></div>
 ${dv.length>=10||od>=5?`<div class="card warn">${ic("alert")} <b>Your review pile is growing:</b> ${od} overdue, ${dv.length} due. Clear reviews before starting new problems.</div>`:""}
@@ -139,7 +144,7 @@ ${dv.length>=10||od>=5?`<div class="card warn">${ic("alert")} <b>Your review pil
 <div class="card rr">${ring(wkS,S.settings.weeklyGoal)}<div><div class="mu sm">Weekly goal</div><b>${wkS>=S.settings.weeklyGoal?"Goal reached":pl(S.settings.weeklyGoal-wkS,"problem")+" to go"}</b><div class="sm mu">${pl(left,"day")} left this week</div></div></div>
 <div class="card"><div class="mu sm">Progress to goal</div><b class="big">${sv} of ${P().length}</b>${bar(sv/P().length*100)}<div class="sm mu">solved · recall rate ${retention()??"—"}${retention()==null?"":"%"}</div></div></div>
 ${new Date().getDay()===0?recap(m):""}
-<h3>New problems</h3><div class="card">${dn.map(p=>newRow(p,1)).join("")}${q.map(p=>newRow(p,0)).join("")||(dn.length?"":'<p class="mu">All 150 solved.</p>')}</div>
+<div class="r" style="border:0"><h3 style="margin:0">New problems <span class="sm mu">from ${n} random topics</span></h3><span class="sp"></span><button data-a="resh">Reshuffle</button></div><div class="card">${dn.map(p=>newRow(p,1)).join("")}${q.map(p=>newRow(p,0)).join("")||(dn.length?"":'<p class="mu">All 150 solved.</p>')}</div>
 <div class="r" style="border:0"><h3 style="margin:0">Review queue</h3><span class="sm mu">oldest first</span><span class="sp"></span>${dv.length?`<button class="pri" data-a="recall">Recall mode (${dv.length})</button>`:""}</div>
 <div class="card">${dv.map(revRow).join("")||'<p class="emp">'+ic("check")+' No reviews due. Enjoy the quiet.</p>'}</div>
 <div class="grid"><div class="card"><b>Mastery stages</b><div class="r" style="border:0">${sg.map(([s,c])=>`<div class="g"><b class="big" style="font-size:24px">${c}</b><span class="sm mu">${s}</span></div>`).join("")}</div></div><div class="card"><b>Reviews, next 14 days</b><div class="wk">${fc.map(([d,v])=>`<div title="${d}: ${v}"><i style="height:${v/mx*60}px"></i>${v}<br>${d.slice(8)}</div>`).join("")}</div></div></div>`},
@@ -162,7 +167,7 @@ function render(){if(!S)return;const n=due().length;$("#nv").innerHTML=NAV.map((
 /* ===== Actions ===== */
 const A={nav:id=>{view=id;catId=null;render()},cat:id=>{catId=id||null;view="road";F.q="";render()},close:()=>{RC=null;$("#dlg").close()},
 th:()=>{const n=document.documentElement.dataset.t==="dark"?"light":"dark";document.documentElement.dataset.t=n;localStorage.setItem("dsa_theme",n)},
-go:()=>{if(due().length)return recall();const p=P().find(x=>x.status==="New");if(p)A.solve(p.id)},
+go:()=>{if(due().length)return recall();const p=pickNew().find(x=>x.status==="New");if(p)A.solve(p.id)},
 solve:id=>{const p=pr(id);ask("Solved: LC "+p.lc+" "+p.name,[{k:"date",l:"Solved on",t:"date",v:today()},{k:"minutes",l:"Minutes taken",t:"number",v:""}].concat(noteFields(p)),v=>{if(!v.date)v.date=today();solve(p,v);toast("Saved. First review "+addD(v.date,1))},"Mark solved")},
 note:id=>{const p=pr(id);ask("Notes: LC "+p.lc,noteFields(p),v=>{Object.assign(p,v);save()})},
 reset:id=>{if(confirm("Reset this problem to New?")){Object.assign(pr(id),{status:"New",firstAt:null,solvedAt:null,step:0,nextReview:null,lapses:0,reviews:[]});save()}},
@@ -234,11 +239,12 @@ if(!okD(rem)){if(rem&&rem.schemaVersion>1){sync="error";syncErr="Cloud has newer
 if(!signed()){sync=cfg.pending?"nosign":"off";hdr();if(rem)toast("Cloud file "+CONFIG.FILE+" is not in this app's format. Sign in to replace it, or use another file name.",1);return}
 if(confirm("The cloud file "+CONFIG.FILE+" is "+(rem?"not in this app's format":"empty or missing")+".\nReplace it with your local data?"+(rem?"\n(A copy of the existing file is downloaded first.)":""))){if(rem)dl(rem,"cloud-snapshot-"+today()+".json");cfg.lastRemoteMod=null;await push(true)}else{sync="off";hdr()}return}
 if(!rem.app)rem.app={lastModifiedAt:"",revision:0};
+if(!rem.app.revision){cfg.lastRemoteMod=rem.app.lastModifiedAt;if(S.app.revision>0){cfg.pending=true;saveCfg();await push(true)}else{S=fix(rem);cfg.pending=false;cfg.lastSync=new Date().toISOString();saveCfg();localStorage.setItem(KEY,JSON.stringify(S));sync="synced";render()}return}
 if(rem.app.lastModifiedAt===cfg.lastRemoteMod){cfg.pending?await push(true):(sync="synced",hdr());return}
 if(rem.app.lastModifiedAt===S.app.lastModifiedAt){cfg.lastRemoteMod=rem.app.lastModifiedAt;cfg.pending=false;cfg.lastSync=new Date().toISOString();saveCfg();sync="synced";hdr();return}
 if(confirm("Cloud data and local data differ.\nCloud: revision "+rem.app.revision+", "+rem.app.lastModifiedAt+"\nLocal: revision "+S.app.revision+", "+S.app.lastModifiedAt+"\n\nOK = use CLOUD data (a local backup is downloaded first)\nCancel = keep LOCAL data and upload it (a cloud snapshot is downloaded first)")){
 dl(S,"local-backup-"+today()+".json");S=fix(rem);cfg.lastRemoteMod=rem.app.lastModifiedAt;cfg.pending=false;cfg.lastSync=new Date().toISOString();saveCfg();localStorage.setItem(KEY,JSON.stringify(S));sync="synced";FIN=mdone();render();toast("Using cloud data")}
-else{dl(rem,"cloud-snapshot-"+today()+".json");cfg.lastRemoteMod=rem.app.lastModifiedAt;cfg.pending=true;await push(true);render()}
+else{dl(rem,"cloud-snapshot-"+today()+".json");cfg.lastRemoteMod=rem.app.lastModifiedAt;cfg.pending=true;saveCfg();await push(true);render()}
 }catch(e){sync="error";syncErr=e.message;hdr()}}
 function checkCfg(j){if(!j||typeof j!=="object"||Array.isArray(j))return"JSON must be an object";
 if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(String(j.SUPABASE_URL||"").replace(/\/+$/,"")))return"SUPABASE_URL must look like https://xxxx.supabase.co";
@@ -263,5 +269,6 @@ cdisc:()=>{if(tm){clearTimeout(tm);tm=null;dueAt=0}cfg.access=cfg.refresh="";cfg
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&S&&cfg.pending&&ready()&&signed()&&CONFIG.AUTO){clearTimeout(tm);tm=null;dueAt=0;push(false)}});
 window.addEventListener("beforeunload",e=>{if(cfg.pending&&ready()&&signed()){e.preventDefault();e.returnValue=""}});
 setInterval(()=>{if(sync==="pending"&&dueAt&&S)hdr()},1000);
+Object.assign(A,{resh:()=>{const t=today();S.daily={date:t,ids:(S.daily?S.daily.ids:[]).filter(id=>pr(id).firstAt===t)};save()}});
 init();
 </script></body></html>
